@@ -39,11 +39,11 @@ if user_args.dryrun:
 # Find a valid settings.conf file.
 logging.info("Searching for a valid settings.conf file.")
 config = configparser.ConfigParser()
-logging.debug("Checking for a settings.conf in /opt/jamf2snipe ...")
-config.read("/Users/dan.c/mdm2snipe/mdm2snipe.conf")
+logging.debug("Checking for a settings.conf in /opt/mosyle2snipe ...")
+config.read("/opt/mosyle2snipe/settings.conf")
 if 'snipe-it' not in set(config):
-    logging.debug("No valid config found in: /opt Checking for a settings.conf in /etc/jamf2snipe ...")
-    config.read('/etc/jamf2snipe/settings.conf')
+    logging.debug("No valid config found in: /opt Checking for a settings.conf in /etc/mosyle2snipe ...")
+    config.read('/etc/mosyle2snipe/settings.conf')
 if 'snipe-it' not in set(config):
     logging.debug("No valid config found in /etc Checking for a settings.conf in current directory ...")
     config.read("settings.conf")
