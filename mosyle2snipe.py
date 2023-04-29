@@ -11,16 +11,16 @@ import mosyle_api
 
 # Set us up for using runtime arguments by defining them.
 runtimeargs = argparse.ArgumentParser()
-runtimeargs.add_argument("--mdm", help="Sets the MDM system you'll be using, either jamf or mosyle")
+runtimeargs.add_argument("--mdm", help="Sets the MDM system you'll be using, either mosyle or mosyle")
 runtimeargs.add_argument("-v", "--verbose", help="Sets the logging level to INFO and gives you a better idea of what the script is doing.", action="store_true")
-runtimeargs.add_argument("--dryrun", help="This checks your config and tries to contact both the JAMFPro and Snipe-it instances, but exits before updating or syncing any assets.", action="store_true")
+runtimeargs.add_argument("--dryrun", help="This checks your config and tries to contact both the mosylePro and Snipe-it instances, but exits before updating or syncing any assets.", action="store_true")
 runtimeargs.add_argument("-d", "--debug", help="Sets logging to include additional DEBUG messages.", action="store_true")
 runtimeargs.add_argument('--do_not_verify_ssl', help="Skips SSL verification for all requests. Helpful when you use self-signed certificate.", action="store_false")
 runtimeargs.add_argument("-r", "--ratelimited", help="Puts a half second delay between Snipe IT API calls to adhere to the standard 120/minute rate limit", action="store_true")
 user_opts = runtimeargs.add_mutually_exclusive_group()
-user_opts.add_argument("-u", "--users", help="Checks out the item to the current user in Jamf if it's not already deployed", action="store_true")
-user_opts.add_argument("-ui", "--users_inverse", help="Checks out the item to the current user in Jamf if it's already deployed", action="store_true")
-user_opts.add_argument("-uf", "--users_force", help="Checks out the item to the user specified in Jamf no matter what", action="store_true")
+user_opts.add_argument("-u", "--users", help="Checks out the item to the current user in mosyle if it's not already deployed", action="store_true")
+user_opts.add_argument("-ui", "--users_inverse", help="Checks out the item to the current user in mosyle if it's already deployed", action="store_true")
+user_opts.add_argument("-uf", "--users_force", help="Checks out the item to the user specified in mosyle no matter what", action="store_true")
 type_opts = runtimeargs.add_mutually_exclusive_group()
 type_opts.add_argument("-m", "--mobiles", help="Runs mobiles only", action="store_true")
 type_opts.add_argument("-c", "--computers", help="Runs computers only", action="store_true")
@@ -70,7 +70,7 @@ logging.debug("The API key you provided for Snipe is: {}".format(apiKey))
 defaultStatus = config['snipe-it']['defaultStatus']
 logging.info("The default status we'll be setting updated computer to is: {} (I sure hope this is a number or something is probably wrong)".format(defaultStatus))
 apple_manufacturer_id = config['snipe-it']['manufacturer_id']
-logging.info("The configured JAMFPro base url is: {} (Pretty sure this needs to be a number too)".format(apple_manufacturer_id))
+logging.info("The configured mosylePro base url is: {} (Pretty sure this needs to be a number too)".format(apple_manufacturer_id))
 
 snipeheaders = {'Authorization': 'Bearer {}'.format(apiKey),'Accept': 'application/json','Content-Type':'application/json'}
 
@@ -81,7 +81,7 @@ if 'api-mapping' in config:
     SETTINGS_CORRECT = False
 if not 'user-mapping' in config and (user_args.users or user_args.users_force or user_args.users_inverse):
     logging.error("""You've chosen to check out assets to users in some capacity using a cmdline switch, but not specified how you want to 
-    search Snipe IT for the users from Jamf. Make sure you have a 'user-mapping' section in your settings.conf file.""")
+    search Snipe IT for the users from mosyle. Make sure you have a 'user-mapping' section in your settings.conf file.""")
     SETTINGS_CORRECT = False
 
 if not SETTINGS_CORRECT:
@@ -171,14 +171,15 @@ def get_snipe_user_id(username):
     user_id_url = '{}/api/v1/users'.format(snipe_base)
     payload = {
         'search':username,
-        'limit':1
     }
     logging.debug('The payload for the snipe user search is: {}'.format(payload))
     response = requests.get(user_id_url, headers=snipeheaders, json=payload, hooks={'response': request_handler})
-    try:
-        return response.json()['rows'][0]['id']
-    except:
-        return "NotFound"
+    logging.debug('The response for the snipe user search is: {}'.format(response.json()))
+    if response.json().get('rows') != None:
+        for user in response.json().get('rows'):
+            if user['username'] == username:
+                return user['id']
+    return "NotFound"
 
 # Function that creates a new Snipe Model - not an asset - with a JSON payload
 def create_snipe_model(payload):
@@ -244,7 +245,7 @@ def update_snipe_asset(snipe_id, payload):
 def checkin_snipe_asset(asset_id):
     api_url = '{}/api/v1/hardware/{}/checkin'.format(snipe_base, asset_id)
     payload = {
-        'note':'checked in by script from Jamf'
+        'note':'checked in by script from mosyle'
     }
     logging.debug('The payload for the snipe checkin is: {}'.format(payload))
     response = requests.post(api_url, headers=snipeheaders, json=payload, hooks={'response': request_handler})
@@ -257,6 +258,11 @@ def checkin_snipe_asset(asset_id):
 
 # Functiono that checks out an asset in snipe
 def checkout_snipe_asset(user, asset_id, checked_out_user=None):
+    if user == None:
+        if checked_out_user != None:
+            logging.info("Nobody to checkout the asset to, checking it in")
+            checkin_snipe_asset(asset_id)
+        return "CheckedOut"
     logging.debug('Asset {} is being checked out to {}'.format(user, asset_id))
     user_id = get_snipe_user_id(user)
     if user_id == 'NotFound':
@@ -277,7 +283,7 @@ def checkout_snipe_asset(user, asset_id, checked_out_user=None):
     payload = {
         'checkout_to_type':'user',
         'assigned_user':user_id,
-        'note':'assigned by script from Jamf'
+        'note':'assigned by script from mosyle'
     }
     logging.debug('The payload for the snipe checkin is: {}'.format(payload))
     response = requests.post(api_url, headers=snipeheaders, json=payload, hooks={'response': request_handler})
@@ -345,8 +351,8 @@ else:
 if mosyle_computer_list is not None:
     logging.info('Received a list of Mosyle assets that had {} entries.'.format(TotalNumber))
 else:
-    logging.error("We were not able to retreive a list of assets from your JAMF instance. It's likely that your settings, or credentials are incorrect. Check your settings.conf and verify you can make API calls outside of this system with the credentials found in your settings.conf")
-    raise SystemExit("Unable to get JAMF Computers.")
+    logging.error("We were not able to retreive a list of assets from your mosyle instance. It's likely that your settings, or credentials are incorrect. Check your settings.conf and verify you can make API calls outside of this system with the credentials found in your settings.conf")
+    raise SystemExit("Unable to get mosyle Computers.")
 
 # After this point we start editing data, so quit if this is a dryrun
 if user_args.dryrun:
@@ -383,26 +389,26 @@ for mosyle_type in mosyle_types:
                 logging.info(f"Could not match the model name from Mosyle {md['device_model_name']} in Snipe, it must have changed.")
                 update_snipe_model(model_id, update_model)
         # elif mosyle_type == 'mobile_devices':
-        #     if jamf['general']['model_identifier'] not in modelnumbers:
-        #         logging.info("Could not find a model ID in snipe for: {}".format(jamf['general']['model_identifier']))
-        #         newmodel = {"category_id":config['snipe-it']['mobile_model_category_id'],"manufacturer_id":apple_manufacturer_id,"name": jamf['general']['model'],"model_number":jamf['general']['model_identifier']}
+        #     if mosyle['general']['model_identifier'] not in modelnumbers:
+        #         logging.info("Could not find a model ID in snipe for: {}".format(mosyle['general']['model_identifier']))
+        #         newmodel = {"category_id":config['snipe-it']['mobile_model_category_id'],"manufacturer_id":apple_manufacturer_id,"name": mosyle['general']['model'],"model_number":mosyle['general']['model_identifier']}
         #         if 'mobile_custom_fieldset_id' in config['snipe-it']:
         #             fieldset_split = config['snipe-it']['mobile_custom_fieldset_id']
         #             newmodel['fieldset_id'] = fieldset_split
         #         create_snipe_model(newmodel)
-        #     elif jamf['general']['model'] not in modelnames:
-        #         update_model = {"name": jamf['general']['model']}
-        #         model_id = modelnumbers[jamf['general']['model_identifier']]
-        #         logging.info(f"Could not match the model name from Jamf {jamf['general']['model']} in Snipe, it must have changed.")
+        #     elif mosyle['general']['model'] not in modelnames:
+        #         update_model = {"name": mosyle['general']['model']}
+        #         model_id = modelnumbers[mosyle['general']['model_identifier']]
+        #         logging.info(f"Could not match the model name from mosyle {mosyle['general']['model']} in Snipe, it must have changed.")
         #         update_snipe_model(model_id, update_model)
 
-        # Pass the SN from JAMF to search for a match in Snipe
+        # Pass the SN from mosyle to search for a match in Snipe
         snipe = search_snipe_asset(md['serial_number'])
 
         # Create a new asset if there's no match:
         if snipe is 'NoMatch':
-            logging.info("Creating a new asset in snipe for JAMF ID {} - {}".format(md['serial_number'], md['device_name']))
-            # This section checks to see if the asset tag was already put into JAMF, if not it creates one with with Jamf's ID.
+            logging.info("Creating a new asset in snipe for mosyle ID {} - {}".format(md['serial_number'], md['device_name']))
+            # This section checks to see if the asset tag was already put into mosyle, if not it creates one with with mosyle's ID.
             if md['asset_tag'] is '':
                 mosyle_asset_tag = md['serial_number']
             else:
@@ -439,12 +445,13 @@ for mosyle_type in mosyle_types:
             logging.error("We got an error when looking up serial number {} in snipe, which shouldn't happen at this point. Check your snipe instance and setup. Skipping for now.".format(md['serial_number']))
             continue
 
-        # Only update if JAMF has more recent info.
+        # Only update if mosyle has more recent info.
+        logging.info(snipe)
         snipe_id = snipe['rows'][0]['id']
         snipe_time = snipe['rows'][0]['updated_at']['datetime']
         mosyle_time = md['date_last_beat']
-        # Check to see that the JAMF record is newer than the previous Snipe update.
-        #if jamf_time > snipe_time:
+        # Check to see that the mosyle record is newer than the previous Snipe update.
+        #if mosyle_time > snipe_time:
         #if True: # uncomment for testing
         payload = {}
         for snipekey in config['{}-api-mapping'.format(mosyle_type)]:
@@ -480,11 +487,10 @@ for mosyle_type in mosyle_types:
 
         if ((user_args.users or user_args.users_inverse) and (snipe['rows'][0]['assigned_to'] == None) == user_args.users) or user_args.users_force:
             if snipe['rows'][0]['status_label']['status_meta'] in ('deployable', 'deployed'):
-                checkout_snipe_asset(md[config['user-mapping']['mosyle_api_field']], snipe_id, snipe['rows'][0]['assigned_to'])
+                checkout_snipe_asset(md.get(config['user-mapping']['mosyle_api_field']), snipe_id, snipe['rows'][0]['assigned_to'])
             else:
                 logging.info("Can't checkout {} since the status isn't set to deployable".format(md['device_name']))
-        # Update/Sync the Snipe Asset Tag Number back to JAMF
+        # Update/Sync the Snipe Asset Tag Number back to mosyle
         if md['asset_tag'] != snipe['rows'][0]['asset_tag']:
-            logging.info("JAMF doesn't have the same asset tag as SNIPE so we'll update it because it should be authoritative.")
+            logging.info("mosyle doesn't have the same asset tag as SNIPE so we'll update it because it should be authoritative.")
             mosyle.update_devices(md['serial_number'], {"asset_tag": snipe['rows'][0]['asset_tag']})
-
