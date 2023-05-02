@@ -168,6 +168,8 @@ def get_snipe_models():
 
 # Function to search snipe for a user 
 def get_snipe_user_id(username):
+    if "@" in username:
+        username = username.split("@")[0]
     user_id_url = '{}/api/v1/users'.format(snipe_base)
     payload = {
         'search':username,
@@ -177,7 +179,11 @@ def get_snipe_user_id(username):
     logging.debug('The response for the snipe user search is: {}'.format(response.json()))
     if response.json().get('rows') != None:
         for user in response.json().get('rows'):
-            if user['username'] == username:
+            if "@" in user['username']:
+                i = user['username'].split("@")[0]
+            else:
+                i = user['username']
+            if i == username:
                 return user['id']
     return "NotFound"
 
