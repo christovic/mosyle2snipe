@@ -446,6 +446,10 @@ for mosyle_type in mosyle_types:
         #if mosyle_time > snipe_time:
         #if True: # uncomment for testing
         payload = {}
+        if mosyle_type == 'computer':
+            config_mosyle_type = 'computers'
+        if mosyle_type == 'mobile':
+            config_mosyle_type = 'mobile_devices'
         for snipekey in config['{}-api-mapping'.format(mosyle_type)]:
             mosyle_key = config['{}-api-mapping'.format(mosyle_type)][snipekey]
             if mosyle_key in md:
