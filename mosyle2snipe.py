@@ -450,10 +450,10 @@ for mosyle_type in mosyle_types:
             config_mosyle_type = 'computers'
         if mosyle_type == 'mobile':
             config_mosyle_type = 'mobile_devices'
-        for snipekey in config['{}-api-mapping'.format(mosyle_type)]:
-            mosyle_key = config['{}-api-mapping'.format(mosyle_type)][snipekey]
+        for snipekey in config['{}-api-mapping'.format(config_mosyle_type)]:
+            mosyle_key = config['{}-api-mapping'.format(config_mosyle_type)][snipekey]
             if mosyle_key in md:
-                mosyle_value = md[config['{}-api-mapping'.format(mosyle_type)][snipekey]]
+                mosyle_value = md[config['{}-api-mapping'.format(config_mosyle_type)][snipekey]]
             else:
                 mosyle_value = ''
             
