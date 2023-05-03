@@ -341,8 +341,8 @@ logging.debug("Here's the list of the {} models and their id's that we were able
 mosyle_computer_list = mosyle.get_devices("mac")
 mosyle_mobile_list = mosyle.get_devices("ios")
 mosyle_types = {
-    'computers': mosyle_computer_list,
-    'mobile_devices': mosyle_mobile_list
+    'computer': mosyle_computer_list,
+    'mobile': mosyle_mobile_list
 }
 TotalNumber = 0
 if user_args.computers:
@@ -370,10 +370,10 @@ CurrentNumber = 0
 
 for mosyle_type in mosyle_types:
     if user_args.computers:
-        if mosyle_type != 'computers':
+        if mosyle_type != 'computer':
             continue
     if user_args.mobiles:
-        if mosyle_type != 'mobile_devices':
+        if mosyle_type != 'mobile':
             continue
     for md in mosyle_types[mosyle_type]:
         CurrentNumber += 1
@@ -381,32 +381,18 @@ for mosyle_type in mosyle_types:
         # Search through the list by ID for all asset information\
 
         # Check that the model number exists in snipe, if not create it.
-        if mosyle_type == 'computers':
-            if md['device_model'] not in modelnumbers:
-                logging.info(f"Could not find a model ID in snipe for: {md['device_model']}")
-                newmodel = {"category_id":config['snipe-it']['computer_model_category_id'],"manufacturer_id":apple_manufacturer_id,"name": md['device_model_name'],"model_number":md['device_model']}
-                if 'computer_custom_fieldset_id' in config['snipe-it']:
-                    fieldset_split = config['snipe-it']['computer_custom_fieldset_id']
-                    newmodel['fieldset_id'] = fieldset_split
-                create_snipe_model(newmodel)
-            elif md['device_model_name'] not in modelnames:
-                update_model = {"name": md['device_model_name']}
-                model_id = modelnumbers[md['device_model']]
-                logging.info(f"Could not match the model name from Mosyle {md['device_model_name']} in Snipe, it must have changed.")
-                update_snipe_model(model_id, update_model)
-        # elif mosyle_type == 'mobile_devices':
-        #     if mosyle['general']['model_identifier'] not in modelnumbers:
-        #         logging.info("Could not find a model ID in snipe for: {}".format(mosyle['general']['model_identifier']))
-        #         newmodel = {"category_id":config['snipe-it']['mobile_model_category_id'],"manufacturer_id":apple_manufacturer_id,"name": mosyle['general']['model'],"model_number":mosyle['general']['model_identifier']}
-        #         if 'mobile_custom_fieldset_id' in config['snipe-it']:
-        #             fieldset_split = config['snipe-it']['mobile_custom_fieldset_id']
-        #             newmodel['fieldset_id'] = fieldset_split
-        #         create_snipe_model(newmodel)
-        #     elif mosyle['general']['model'] not in modelnames:
-        #         update_model = {"name": mosyle['general']['model']}
-        #         model_id = modelnumbers[mosyle['general']['model_identifier']]
-        #         logging.info(f"Could not match the model name from mosyle {mosyle['general']['model']} in Snipe, it must have changed.")
-        #         update_snipe_model(model_id, update_model)
+        if md['device_model'] not in modelnumbers:
+            logging.info(f"Could not find a model ID in snipe for: {md['device_model']}")
+            newmodel = {"category_id":config['snipe-it'][f"{mosyle_type}_model_category_id"],"manufacturer_id":apple_manufacturer_id,"name": md['device_model_name'],"model_number":md['device_model']}
+            if f"{mosyle_type}_custom_fieldset_id" in config['snipe-it']:
+                fieldset_split = config['snipe-it'][f"{mosyle_type}_custom_fieldset_id"]
+                newmodel['fieldset_id'] = fieldset_split
+            create_snipe_model(newmodel)
+        elif md['device_model_name'] not in modelnames:
+            update_model = {"name": md['device_model_name']}
+            model_id = modelnumbers[md['device_model']]
+            logging.info(f"Could not match the model name from Mosyle {md['device_model_name']} in Snipe, it must have changed.")
+            update_snipe_model(model_id, update_model)
 
         # Pass the SN from mosyle to search for a match in Snipe
         snipe = search_snipe_asset(md['serial_number'])
@@ -424,9 +410,9 @@ for mosyle_type in mosyle_types:
             except:
                 logging.info('No custom configuration found in settings.conf for asset tag name upon asset creation.')
             # Create the payload
-            if mosyle_type == 'computers':
+            if mosyle_type == 'computer':
                 newasset = {'asset_tag': mosyle_asset_tag,'model_id': modelnumbers[md['device_model']], 'name': md['device_name'], 'status_id': defaultStatus,'serial': md['serial_number']}
-            elif mosyle_type == 'mobile_devices':
+            elif mosyle_type == 'mobile':
                 index = mosyle_asset_tag.find('-')
                 mosyle_asset_tag = mosyle_asset_tag[:index] + "-m" + mosyle_asset_tag[index:]
                 newasset = {'asset_tag': mosyle_asset_tag, 'model_id': modelnumbers['{}'.format(md['device_model'])], 'name': md['device_name'], 'status_id': defaultStatus,'serial': md['serial_number']}
