@@ -166,6 +166,53 @@ def get_snipe_models():
         logging.error('When we tried to retreive a list of models, Snipe-IT responded with error status code:{} - {}'.format(response.status_code, response.content))
         raise SystemExit("Snipe models API endpoint failed.")
 
+# Function to get all the asset models
+def get_snipe_assets(category):
+    api_url = '{}/api/v1/hardware'.format(snipe_base)
+    count = 0
+    while True:
+        response = requests.get(api_url, headers=snipeheaders,
+            verify=user_args.do_not_verify_ssl,
+            hooks={'response': request_handler},
+            params={'category_id': category, 'limit': 50})
+        if response.status_code == 200:
+            jsonresponse = response.json()
+            if len(jsonresponse['rows']) + count == jsonresponse['total']:
+                break
+        else:
+            break
+
+
+
+
+
+
+    api_url = '{}/api/v1/hardware'.format(snipe_base)
+    logging.debug('Calling against: {}'.format(api_url))
+    response = requests.get(api_url, headers=snipeheaders, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
+    if response.status_code == 200:
+        jsonresponse = response.json()
+        logging.debug("Got a valid response that should have {} models.".format(jsonresponse['total']))
+        if jsonresponse['total'] <= len(jsonresponse['rows']) :
+            return jsonresponse
+        else:
+            logging.info("We didn't get enough results so we need to get them again.")
+            api_url = '{}/api/v1/models?limit={}'.format(snipe_base, jsonresponse['total'])
+            newresponse = requests.get(api_url, headers=snipeheaders, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
+            if response.status_code == 200:
+                newjsonresponse = newresponse.json()
+                if newjsonresponse['total'] == len(newjsonresponse['rows']) :
+                    return newjsonresponse
+                else:
+                    logging.error("We couldn't seem to get all of the model numbers")
+                    raise SystemExit("Unable to get all model objects from Snipe-IT instanace")
+            else:
+                logging.error('When we tried to retreive a list of models, Snipe-IT responded with error status code:{} - {}'.format(response.status_code, response.content))
+                raise SystemExit("Snipe models API endpoint failed.")
+    else:
+        logging.error('When we tried to retreive a list of models, Snipe-IT responded with error status code:{} - {}'.format(response.status_code, response.content))
+        raise SystemExit("Snipe models API endpoint failed.")
+
 # Function to search snipe for a user 
 def get_snipe_user_id(username):
     if "@" in username:
@@ -325,6 +372,8 @@ logging.info("Finished running our tests.")
 # Get a list of known models from Snipe
 logging.info("Getting a list of computer models that snipe knows about.")
 snipemodels = get_snipe_models()
+snipe_computer_assets = get_snipe_assets(config['snipe-it']['computer_model_category_id'])
+snipe_mobile_assets = get_snipe_assets(config['snipe-it']['mobile_model_category_id'])
 logging.debug("Parsing the {} model results for models with model numbers.".format(len(snipemodels['rows'])))
 modelnumbers = {}
 modelnames = []
