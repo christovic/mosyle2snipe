@@ -379,9 +379,9 @@ mosyle_types = {
 }
 TotalNumber = 0
 if user_args.computers:
-    TotalNumber = len(mosyle_types['computers'])
+    TotalNumber = len(mosyle_types['computer'])
 elif user_args.mobiles:
-    TotalNumber = len(mosyle_types['mobile_devices'])
+    TotalNumber = len(mosyle_types['mobile'])
 else:
     for mosyle_type in mosyle_types:
         TotalNumber += len(mosyle_types[mosyle_type]) 
