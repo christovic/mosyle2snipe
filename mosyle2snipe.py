@@ -427,8 +427,6 @@ for mosyle_type in mosyle_types:
             if mosyle_type == 'computers':
                 newasset = {'asset_tag': mosyle_asset_tag,'model_id': modelnumbers[md['device_model']], 'name': md['device_name'], 'status_id': defaultStatus,'serial': md['serial_number']}
             elif mosyle_type == 'mobile_devices':
-                index = mosyle_asset_tag.find('-')
-                mosyle_asset_tag = mosyle_asset_tag[:index] + "-m" + mosyle_asset_tag[index:]
                 newasset = {'asset_tag': mosyle_asset_tag, 'model_id': modelnumbers['{}'.format(md['device_model'])], 'name': md['device_name'], 'status_id': defaultStatus,'serial': md['serial_number']}
             if 'serial_number' not in md:
                 logging.warning("The serial number is not available in Mosyle. This is normal for DEP enrolled devices that have not yet checked in for the first time. Since there's no serial number yet, we'll skip it for now.")
